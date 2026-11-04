@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lakásfelújítás Költségszámító</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f7;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 750px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 25px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        input[type="number"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 15px;
+        }
+        button {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #219150;
+        }
+        .result-box {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #f8fdf9;
+            border: 1px solid #c8e6c9;
+            border-radius: 6px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background-color: #edf7f0;
+        }
+        .total-price {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #c0392b;
+            margin-top: 15px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Lakásfelújítás Költségszámító</h1>
+
+    <form id="renovationForm">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="width">Szoba szélessége (méter):</label>
+                <input type="number" id="width" step="0.01" min="0.1" placeholder="pl. 4" required>
+            </div>
+            <div class="form-group">
+                <label for="length">Szoba hosszúsága (méter):</label>
+                <input type="number" id="length" step="0.01" min="0.1" placeholder="pl. 5" required>
+            </div>
+            <div class="form-group">
+                <label for="height">Szoba magassága (méter):</label>
+                <input type="number" id="height" step="0.01" min="0.1" placeholder="pl. 2.7" required>
+            </div>
+            <div class="form-group">
+                <label for="doors">Ajtók száma (db):</label>
+                <input type="number" id="doors" min="0" value="1" required>
+            </div>
+            <div class="form-group full-width">
+                <label for="windows">Ablakok száma (db):</label>
+                <input type="number" id="windows" min="0" value="1" required>
+            </div>
+            <div class="form-group full-width">
+                <button type="button" onclick="calculateRenovation()">Költségek Számítása</button>
+            </div>
+        </div>
+    </form>
+
+    <div id="results" class="result-box" style="display: none;">
+        <h2>Kalkuláció Eredménye</h2>
+        <div id="details"></div>
+    </div>
+</div>
+
+<script>
+    // Konstansok meghatározása (nyílászárók mérete, kiszerelések, árak)
+    const DOOR_AREA = 0.9 * 2.0;      // 1 ajtó területe: 90x200 cm = 1.8 m²
+    const WINDOW_AREA = 1.2 * 1.5;    // 1 ablak területe: 120x150 cm = 1.8 m²
+    
+    const PAINT_PER_SQM = 5;          // 5 liter festék kell 1 m²-re (feladat szerint)
+    const PAINT_CAN_SIZE = 10;        // 10 literes kiszerelés
+    const PAINT_PRICE_PER_CAN = 15000; // 1 db 10 literes festék ára (Ft)
+
+    const FLOOR_BOX_COVERAGE = 2.5;   // 1 doboz laminált padló = 2.5 m²
+    const FLOOR_PRICE_PER_SQM = 4000;  // Laminált padló egységára (Ft / m²)
+
+    const MARGIN_FACTOR = 1.05;       // +5% ráhagyás
+
+    function calculateRenovation() {
+        const width = parseFloat(document.getElementById('width').value);
+        const length = parseFloat(document.getElementById('length').value);
+        const height = parseFloat(document.getElementById('height').value);
+        const doorsCount = parseInt(document.getElementById('doors').value) || 0;
+        const windowsCount = parseInt(document.getElementById('windows').value) || 0;
+
+        if (isNaN(width) || isNaN(length) || isNaN(height) || width <= 0 || length <= 0 || height <= 0) {
+            alert("Kérjük, adjon meg érvényes pozitív méreteket!");
+            return;
+        }
+
+        // 1. Felületek kiszámítása
+        const ceilingArea = width * length;
+        const totalWallArea = 2 * (width * height + length * height);
+        const openingsArea = (doorsCount * DOOR_AREA) + (windowsCount * WINDOW_AREA);
+        const paintableWallArea = Math.max(0, totalWallArea - openingsArea);
+        const totalPaintArea = ceilingArea + paintableWallArea;
+
+        // 2. Festék kiszámítása
+        const paintNetLiters = totalPaintArea * PAINT_PER_SQM;              // Szükséges nettó festék (liter)
+        const paintGrossLiters = paintNetLiters * MARGIN_FACTOR;             // 5% ráhagyással
+        const paintCansNeeded = Math.ceil(paintGrossLiters / PAINT_CAN_SIZE); // Vásárolandó 10L-es vödrök száma
+        const paintPurchasedLiters = paintCansNeeded * PAINT_CAN_SIZE;       // Ténylegesen megvásárolt literek
+        const totalPaintCost = paintCansNeeded * PAINT_PRICE_PER_CAN;        // Festék ára
+
+        // 3. Laminált padló kiszámítása
+        const floorNetArea = ceilingArea;                                   // Nettó padlófelület (m²)
+        const floorGrossArea = floorNetArea * MARGIN_FACTOR;                 // 5% ráhagyással (m²)
+        const floorBoxesNeeded = Math.ceil(floorGrossArea / FLOOR_BOX_COVERAGE); // Vásárolandó dobozok száma
+        const floorPurchasedArea = floorBoxesNeeded * FLOOR_BOX_COVERAGE;   // Megvásárolt m²
+        const totalFloorCost = floorPurchasedArea * FLOOR_PRICE_PER_SQM;     // Padló ára
+
+        // 4. Összesített ár
+        const grandTotal = totalPaintCost + totalFloorCost;
+
+        // Eredmények kirajzolása
+        const detailsDiv = document.getElementById('details');
+        detailsDiv.innerHTML = `
+            <h3>Számított felületek:</h3>
+            <ul>
+                <li>Plafon területe: <strong>${ceilingArea.toFixed(2)} m²</strong></li>
+                <li>Falak festendő területe (nyílászárók levonása után): <strong>${paintableWallArea.toFixed(2)} m²</strong></li>
+                <li>Összes festendő felület: <strong>${totalPaintArea.toFixed(2)} m²</strong></li>
+            </ul>
+
+            <h3>Részletes Anyagszükséglet és Költségek:</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tétel</th>
+                        <th>Szükséges (nettó)</th>
+                        <th>Vásárolandó (+5% & kiszerelés)</th>
+                        <th>Egységár</th>
+                        <th>Fizetendő</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Festék (10L / vödör)</strong></td>
+                        <td>${paintNetLiters.toFixed(1)} liter</td>
+                        <td>${paintCansNeeded} vödör (${paintPurchasedLiters} liter)</td>
+                        <td>${PAINT_PRICE_PER_CAN.toLocaleString('hu-HU')} Ft / vödör</td>
+                        <td>${totalPaintCost.toLocaleString('hu-HU')} Ft</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Laminált padló (2.5 m² / doboz)</strong></td>
+                        <td>${floorNetArea.toFixed(2)} m²</td>
+                        <td>${floorBoxesNeeded} doboz (${floorPurchasedArea.toFixed(1)} m²)</td>
+                        <td>${FLOOR_PRICE_PER_SQM.toLocaleString('hu-HU')} Ft / m²</td>
+                        <td>${totalFloorCost.toLocaleString('hu-HU')} Ft</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="total-price">Összesített fizetendő végösszeg: ${grandTotal.toLocaleString('hu-HU')} Ft</p>
+        `;
+
+        document.getElementById('results').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
